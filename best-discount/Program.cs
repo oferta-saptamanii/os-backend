@@ -20,12 +20,16 @@ namespace best_discount
             aggregatedResults.Add("Lidl", lidlResults);
 
             // Scrape Kaufland
-            var kauflandResults = await Kaufland.ScrapeAsync();
+           var kauflandResults = await Kaufland.ScrapeAsync();
             aggregatedResults.Add("Kaufland", kauflandResults);
 
             // Scrape Penny
             var pennyResults = await Penny.ScrapeAsync();
             aggregatedResults.Add("Penny", pennyResults);
+
+            // Scrape Auchan
+            var auchanResults = await Auchan.ScrapeAsync();
+            aggregatedResults.Add("Auchan", auchanResults);
 
             // Serialize to JSON & save to file
             var json = JsonConvert.SerializeObject(aggregatedResults, Formatting.Indented);
