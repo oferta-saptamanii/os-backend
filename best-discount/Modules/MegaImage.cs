@@ -308,7 +308,6 @@ fragment MobileFee on MobileFee {
                         if (response.IsSuccessStatusCode)
                         {
                             var responseContent = await response.Content.ReadAsStringAsync();
-                            Utils.Report($"failed to scrape for category '{cat.Key}'. Status code: {response.StatusCode}", Utils.ErrorType.ERROR);
                             var products = ProcessPage(responseContent, cat.Key);
                             pageData.Add(cat.Key, products);
                         }
