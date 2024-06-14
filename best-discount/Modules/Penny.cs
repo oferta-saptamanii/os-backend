@@ -60,7 +60,7 @@ namespace best_discount.Modules
                 }
                 else
                 {
-                    Console.WriteLine("Div not found.");
+                    Utils.Report("div not found", ErrorType.ERROR);
                 }
             }
             return pageData;

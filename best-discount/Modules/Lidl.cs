@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static best_discount.Utils;
 
 namespace best_discount.Modules
 {
@@ -72,7 +73,7 @@ namespace best_discount.Modules
                 }
                 else
                 {
-                    Console.WriteLine("Div not found.");
+                    Utils.Report("div not found", ErrorType.ERROR);
                 }
             }
             return pageData;

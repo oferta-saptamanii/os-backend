@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static best_discount.Utils;
 
 namespace best_discount.Modules
 {
@@ -87,7 +88,7 @@ namespace best_discount.Modules
                 }
                 else
                 {
-                    Console.WriteLine("Div not found.");
+                    Utils.Report("div not found", ErrorType.ERROR);
                 }
             }
             return pageData;
@@ -119,10 +120,8 @@ namespace best_discount.Modules
                         var imgElement = offerTile.QuerySelector("div.m-offer-tile__container div.m-offer-tile__image figure.m-figure img.a-image-responsive");
                         var imageUrl = imgElement?.GetAttribute("src");
 
-                        // Check if the src attribute contains a valid URL or a placeholder
                         if (imageUrl == null || imageUrl.StartsWith("data:"))
                         {
-                            // Try to get the URL from the data-src attribute
                             imageUrl = imgElement?.GetAttribute("data-src");
                         }
 
