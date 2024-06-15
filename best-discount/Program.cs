@@ -36,7 +36,7 @@ namespace best_discount
             aggregatedResults.Add("MegaImage", megaResults);
 
             // Scrape Profi
-            var profiResults = await MegaImage.ScrapeAsync();
+            var profiResults = await Profi.ScrapeAsync();
             aggregatedResults.Add("Profi", profiResults);
 
             // Serialize to JSON & save to file
