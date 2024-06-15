@@ -24,7 +24,7 @@ namespace best_discount
             aggregatedResults.Add("Lidl", lidlResults);
 
             // Scrape Kaufland
-           var kauflandResults = await Kaufland.ScrapeAsync();
+            var kauflandResults = await Kaufland.ScrapeAsync();
             aggregatedResults.Add("Kaufland", kauflandResults);
 
             // Scrape Penny
@@ -51,22 +51,36 @@ namespace best_discount
 
         static async Task GetCatalogs()
         {
-            var aggregatedResults = new Dictionary<string, Dictionary<string, List<Catalog>>>();
-            
-            var lidlResults = await Lidl.GetCatalog();
-            var kauflandResults = await Kaufland.GetCatalog();
+            var aggregatedResults = new Dictionary<string, Dictionary<string, Dictionary<string, List<Catalog>>>>();
 
-            if (!aggregatedResults.ContainsKey("Catalogs"))
-            {
-                aggregatedResults["Catalogs"] = new Dictionary<string, List<Catalog>>();
-            }
 
-            aggregatedResults["Catalogs"].Add("Lidl", lidlResults);
-            aggregatedResults["Catalogs"].Add("Kaufland", kauflandResults);
+            var lidlResults = TransformLidl(await Lidl.GetCatalog());
+            var kauflandResults = await Kaufland.GetAllCatalogs();
+
+
+            aggregatedResults.Add("Lidl", lidlResults);
+            aggregatedResults.Add("Kaufland", kauflandResults);
 
             var json = JsonConvert.SerializeObject(aggregatedResults, Formatting.Indented);
             var dateNow = DateTime.Now.ToString("ddMM-HH-mm-ss");
             File.WriteAllText($"catalogs_{dateNow}.json", json);
+        }
+
+        // i might have to scrape for each lidl store too so keeping this for now?
+        private static Dictionary<string, Dictionary<string, List<Catalog>>> TransformLidl(List<Catalog> lidlCatalogs)
+        {
+            var result = new Dictionary<string, Dictionary<string, List<Catalog>>>();
+
+            if (lidlCatalogs.Count > 0)
+            {
+                const string lidlCity = "Lidl City";
+                const string lidlStoreName = "Lidl Store";
+
+                result[lidlCity] = new Dictionary<string, List<Catalog>>();
+                result[lidlCity][lidlStoreName] = lidlCatalogs;
+            }
+
+            return result;
         }
     }
 

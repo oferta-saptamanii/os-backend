@@ -35,7 +35,7 @@ namespace best_discount.Modules
 
         public static async Task<Dictionary<string, List<Product>>> ScrapeAsync()
         {
-            Console.WriteLine("Scrapping MegaImage...");
+            Console.WriteLine("Scraping MegaImage...");
             var pageData = new Dictionary<string, List<Product>>();
 
             using (HttpClient client = new HttpClient())
