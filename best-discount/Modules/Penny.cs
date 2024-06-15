@@ -15,7 +15,7 @@ namespace best_discount.Modules
     {
         public static async Task<Dictionary<string, List<Product>>> ScrapeAsync()
         {
-            Console.WriteLine("Scrapping Penny...");
+            Console.WriteLine("Scraping Penny...");
 
             string url = "https://www.penny.ro/oferta-saptamanii";
             var pageData = new Dictionary<string, List<Product>>();

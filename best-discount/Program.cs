@@ -35,6 +35,10 @@ namespace best_discount
             var megaResults = await MegaImage.ScrapeAsync();
             aggregatedResults.Add("MegaImage", megaResults);
 
+            // Scrape Profi
+            var profiResults = await MegaImage.ScrapeAsync();
+            aggregatedResults.Add("Profi", profiResults);
+
             // Serialize to JSON & save to file
             var json = JsonConvert.SerializeObject(aggregatedResults, Formatting.Indented);
             var dateNow = DateTime.Now.ToString("ddMM-HH-mm-ss");
