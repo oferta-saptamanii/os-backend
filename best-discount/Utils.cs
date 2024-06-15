@@ -1,4 +1,6 @@
-﻿using System;
+﻿using AngleSharp.Dom;
+using AngleSharp;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -43,6 +45,23 @@ namespace best_discount
 
             // Mail / push notification the devs
             // ....
+        }
+
+        public static async Task<string> FetchContent(HttpClient client, string url)
+        {
+            HttpResponseMessage response = await client.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+            return await response.Content.ReadAsStringAsync();
+        }
+
+        public static async Task<IDocument> ParseHtml(string htmlContent)
+        {
+            var config = Configuration.Default.WithDefaultLoader().WithXPath();
+            var context = BrowsingContext.New(config);
+            return await context.OpenAsync(req => req.Content(htmlContent));
         }
     }
 }

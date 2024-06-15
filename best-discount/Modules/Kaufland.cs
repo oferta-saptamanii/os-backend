@@ -1,9 +1,12 @@
 ﻿using AngleSharp;
+using AngleSharp.Dom;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static best_discount.Utils;
 
@@ -157,6 +160,103 @@ namespace best_discount.Modules
             }
             return productList;
         }
+
+        // Get catalogs
+        #region catalogs
+        public static async Task<List<Catalog>> GetCatalog()
+        {
+            Console.WriteLine("Scraping Kaufland Catalogs...");
+            string url = "https://www.kaufland.ro/cataloage-cu-reduceri.html#top";
+            var catalogData = new List<Catalog>();
+
+            using (HttpClient client = new HttpClient())
+            {
+                string htmlContent = await FetchContent(client, url);
+                if (string.IsNullOrEmpty(htmlContent))
+                {
+                    Utils.Report("Failed to fetch initial page content", ErrorType.ERROR);
+                    return catalogData;
+                }
+
+                var document = await ParseHtml(htmlContent);
+
+                var divElements = document.QuerySelectorAll("[data-t-decorator='Catalog']").OfType<IElement>().ToList();
+
+                foreach (var element in divElements)
+                {
+                    var flyerElement = element.QuerySelector("a");
+                    if (flyerElement != null)
+                    {
+                        var catalog = await CreateCatalog(client, flyerElement);
+                        if (flyerElement != null)
+                        {
+
+                            catalogData.Add(catalog);
+                        }
+                    }
+                }
+            }
+
+            return catalogData;
+        }
+
+        private static async Task<Catalog> CreateCatalog(HttpClient client, IElement element)
+        {
+            var catalog = new Catalog();
+
+            var href = element.GetAttribute("href");
+            if (string.IsNullOrEmpty(href))
+            {
+                return null;
+            }
+
+            // https://leaflets.kaufland.com/ro-RO/RO_ro_Magazine2_3970_RO24-OC2/ar/3970
+            var urlMatch = Regex.Match(href, @"\/ro-RO\/(.*?)\/ar\/");
+            if (!urlMatch.Success)
+            {
+                return null;
+            }
+
+            var apiUrl = $"https://endpoints.leaflets.schwarz/v4/flyer?flyer_identifier={urlMatch.Groups[1].Value}&region_id=0&region_code=0";
+            HttpResponseMessage response = await client.GetAsync(apiUrl);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            JObject jsonDoc = JObject.Parse(await response.Content.ReadAsStringAsync());
+            catalog.Url = jsonDoc["flyer"]?["pdfUrl"]?.ToString();
+
+
+            string name = "";
+            var teaserWrapper = element.QuerySelector(".m-teaser__wrapper");
+            if(teaserWrapper != null)
+            {
+                var description = teaserWrapper.QuerySelector(".m-teaser__desc")?.TextContent?.Trim();
+                description = description.Replace("Răsfoiește c", "C");
+
+                catalog.Name = description;
+
+                var divImgElement = teaserWrapper.QuerySelector(".m-teaser__image");
+                if (divImgElement != null)
+                {
+                    var figureElement = divImgElement.QuerySelector(".m-figure");
+                    if(figureElement != null)
+                    {
+                        var imgElement = figureElement.QuerySelector("a-image-responsive");
+                        var img = imgElement?.GetAttribute("src");
+
+                        catalog.Image = img;
+                    }
+                }
+            }
+            var imageElement = element.QuerySelector(".flyer__image");
+            catalog.Image = imageElement?.GetAttribute("src");
+            catalog.AvailableDate = element.GetAttribute("data-aa-detail")?.Replace("Catalogul cu oferte valabile în perioada", "").Trim();
+
+            return catalog;
+        }
+        #endregion
 
     }
 }
