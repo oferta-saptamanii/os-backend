@@ -164,7 +164,7 @@ namespace best_discount.Modules
             var stores = GetStores();
             var result = new Dictionary<string, Dictionary<string, List<Catalog>>>();
 
-            Console.WriteLine($"Scraping Kaufland Catalogs");
+            Console.WriteLine($"Scraping Kaufland Catalogs...");
 
             foreach (var store in stores)
             {

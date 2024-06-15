@@ -1,11 +1,15 @@
 ﻿using AngleSharp;
+using AngleSharp.Dom;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static best_discount.Utils;
 
 namespace best_discount.Modules
 {
@@ -101,5 +105,84 @@ namespace best_discount.Modules
             }
             return products;
         }
+
+        #region catalogs
+        public static async Task<List<Catalog>> GetCatalog()
+        {
+            Console.WriteLine("Scraping Auchan Catalogs...");
+            string url = "https://www.auchan.ro/cataloagele-auchan";
+            var catalogData = new List<Catalog>();
+
+            using (HttpClient client = new HttpClient())
+            {
+
+                string htmlContent = await FetchContent(client, url);
+                if (string.IsNullOrEmpty(htmlContent))
+                {
+                    Utils.Report("Failed to fetch initial page content", ErrorType.ERROR);
+                    return catalogData;
+                }
+
+                var document = await ParseHtml(htmlContent);
+
+                var layoutElement = document.QuerySelector(".vtex-list-context-0-x-list.vtex-list-context-0-x-list--modular4Banner");
+                var divElements = layoutElement?.QuerySelectorAll(".vtex-list-context-0-x-item.vtex-list-context-0-x-item--modular4Banner").OfType<IElement>().ToList();
+
+                foreach (var element in divElements)
+                {
+                    var catalog = await CreateCatalog(client, element);
+                    if(catalog != null)
+                    {
+                        catalogData.Add(catalog);
+                    }
+                }
+            }
+
+            return catalogData;
+        }
+
+        private static async Task<Catalog> CreateCatalog(HttpClient client, IElement element)
+        {
+            var catalog = new Catalog();
+
+            var innerElement = element.QuerySelector("div div");
+            if (innerElement != null)
+            {
+                var pdfElement = innerElement.QuerySelector(".vtex-list-context-0-x-infoCardImageContainer a");
+                catalog.Url = pdfElement?.GetAttribute("href")?.ToString();
+                catalog.Image = pdfElement?.QuerySelector("img")?.GetAttribute("src")?.ToString();
+
+                var nameElement = innerElement.QuerySelector(".vtex-list-context-0-x-infoCardTextContainer div.vtex-list-context-0-x-infoCardHeadline");
+                catalog.Name = nameElement?.TextContent?.Trim();
+
+                var availableDateElement = innerElement.QuerySelector(".vtex-list-context-0-x-infoCardTextContainer  div.vtex-list-context-0-x-infoCardSubhead");
+                var availableDate = availableDateElement?.TextContent.Trim();
+                catalog.AvailableDate = ProcessAvailableDate(availableDate);
+                
+            }
+
+            return catalog;
+        }
+
+        private static string ProcessAvailableDate(string date)
+        {
+            if (!string.IsNullOrEmpty(date))
+            {
+                if (date.Contains("în perioada"))
+                {
+                    date = date.Split("în perioada")[1];
+                }
+                else if (date.Contains("valabilă până pe"))
+                {
+                    date = date.Split("valabilă până pe")[1];
+                }
+                else
+                    date = null;
+
+                
+            }
+            return date;
+        }
+        #endregion
     }
 }

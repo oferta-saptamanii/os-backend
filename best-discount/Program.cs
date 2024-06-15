@@ -54,12 +54,13 @@ namespace best_discount
             var aggregatedResults = new Dictionary<string, Dictionary<string, Dictionary<string, List<Catalog>>>>();
 
 
-            var lidlResults = TransformLidl(await Lidl.GetCatalog());
+            var lidlResults = Transform(await Lidl.GetCatalog(), "Lidl");
             var kauflandResults = await Kaufland.GetAllCatalogs();
-
+            var auchanResults = Transform(await Auchan.GetCatalog(), "Auchan");
 
             aggregatedResults.Add("Lidl", lidlResults);
             aggregatedResults.Add("Kaufland", kauflandResults);
+            aggregatedResults.Add("Auchan", auchanResults);
 
             var json = JsonConvert.SerializeObject(aggregatedResults, Formatting.Indented);
             var dateNow = DateTime.Now.ToString("ddMM-HH-mm-ss");
@@ -67,17 +68,17 @@ namespace best_discount
         }
 
         // i might have to scrape for each lidl store too so keeping this for now?
-        private static Dictionary<string, Dictionary<string, List<Catalog>>> TransformLidl(List<Catalog> lidlCatalogs)
+        private static Dictionary<string, Dictionary<string, List<Catalog>>> Transform(List<Catalog> catalogs, string storeName)
         {
             var result = new Dictionary<string, Dictionary<string, List<Catalog>>>();
 
-            if (lidlCatalogs.Count > 0)
+            if (catalogs.Count > 0)
             {
-                const string lidlCity = "Lidl City";
-                const string lidlStoreName = "Lidl Store";
+                string city = $"{storeName} City";
+                string name = $"{storeName} Store";
 
-                result[lidlCity] = new Dictionary<string, List<Catalog>>();
-                result[lidlCity][lidlStoreName] = lidlCatalogs;
+                result[city] = new Dictionary<string, List<Catalog>>();
+                result[city][name] = catalogs;
             }
 
             return result;
