@@ -128,7 +128,7 @@ namespace best_discount.Modules
                 
 
                 var document = await ParseHtml(htmlContent);
-                File.WriteAllText("auch.html", document.ToHtml().ToString());
+                
                 var layoutElement = document.QuerySelector(".vtex-list-context-0-x-list.vtex-list-context-0-x-list--modular4Banner");
                 var divElements = layoutElement?.QuerySelectorAll(".vtex-list-context-0-x-item.vtex-list-context-0-x-item--modular4Banner").OfType<IElement>().ToList();
 
