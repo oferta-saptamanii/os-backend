@@ -88,6 +88,8 @@ namespace best_discount.Modules
 
                     foreach (var (action, nonce) in actionsAndNonces)
                     {
+                        var uniqueProducts = new HashSet<Product>();
+
                         foreach (var profiCategory in profiCategories)
                         {
                             var storeType = profiCategory.Value;
@@ -107,7 +109,15 @@ namespace best_discount.Modules
                                 string responseContent = await response.Content.ReadAsStringAsync();
                                 var products = ProcessPage(responseContent, profiCategory.Key, availableDate);
 
-                                categoryProducts.AddRange(products);
+                                foreach (var product in products)
+                                {
+                                    // Prevent duplicates
+                                    if (!uniqueProducts.Contains(product))
+                                    {
+                                        uniqueProducts.Add(product);
+                                        categoryProducts.Add(product);
+                                    }
+                                }
                             }
                             else
                             {
@@ -118,6 +128,7 @@ namespace best_discount.Modules
 
                     pageData.Add(categoryName, categoryProducts);
                 }
+
             }
 
             // Remove duplicates

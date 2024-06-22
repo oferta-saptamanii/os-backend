@@ -55,7 +55,15 @@ namespace best_discount.Modules
                             {
                                 pageData[product.Category] = new List<Product>();
                             }
-                            pageData[product.Category].Add(product);
+
+                            // Prevent duplicates
+                            HashSet<Product> uniqueProducts = new HashSet<Product>(pageData[product.Category]);
+
+                            if (!uniqueProducts.Contains(product))
+                            {
+                                uniqueProducts.Add(product);
+                                pageData[product.Category] = uniqueProducts.ToList();
+                            }
                         }
                     }
 

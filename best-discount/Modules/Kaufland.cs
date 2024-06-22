@@ -76,16 +76,24 @@ namespace best_discount.Modules
                                 if (!string.IsNullOrEmpty(href))
                                 {
                                     var absoluteUrl = new Uri(new Uri(url), href).ToString();
-                                    //Console.WriteLine($"Navigating to: {absoluteUrl} | {category}");
+                                    var scrapedProducts = await ProcessPageAsync(absoluteUrl, context, category);
+                                    HashSet<Product> uniqueProducts = new HashSet<Product>(scrapedProducts);
 
-                                    var products = await ProcessPageAsync(absoluteUrl, context, category);
-                                    pageData.Add(category, products);
+                                    if (!pageData.ContainsKey(category))
+                                    {
+                                        pageData[category] = new List<Product>();
+                                    }
+
+                                    foreach (var product in uniqueProducts)
+                                    {
+                                        pageData[category].Add(product);
+                                    }
                                 }
                             }
                         }
                     }
-
                 }
+
                 else
                 {
                     Utils.Report("div not found", ErrorType.ERROR);

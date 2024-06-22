@@ -31,8 +31,10 @@ namespace best_discount.Services
 
                     foreach (var product in category.Value)
                     {
-                        CollectionReference productsColRef = categoryDocRef.Collection("products");
-                        await productsColRef.AddAsync(product);
+                        string sanitizedTitle = product.FullTitle.Replace("/", "-");
+                        DocumentReference productDocRef = categoryDocRef.Collection("products").Document(sanitizedTitle);
+
+                        await productDocRef.SetAsync(product);
                     }
                 }
             }
@@ -52,11 +54,12 @@ namespace best_discount.Services
                     foreach (var storeName in city.Value)
                     {
                         DocumentReference storeNameDocRef = cityDocRef.Collection("stores").Document(storeName.Key);
-                        CollectionReference catalogColRef = storeNameDocRef.Collection("catalogs");
 
                         foreach (var catalog in storeName.Value)
                         {
-                            await catalogColRef.AddAsync(catalog);
+                            string sanitizedStoreName = catalog.Name.Replace("/", "-");
+                            DocumentReference catalogDocRef = storeNameDocRef.Collection("catalogs").Document(sanitizedStoreName);
+                            await catalogDocRef.SetAsync(catalog);
                         }
                     }
                 }

@@ -33,6 +33,7 @@ namespace best_discount.Modules
         {
             Console.WriteLine("Scraping Auchan...");
             var pageData = new Dictionary<string, List<Product>>();
+            var visitedProducts = new HashSet<Product>();
 
             var config = Configuration.Default.WithDefaultLoader().WithXPath();
             var context = BrowsingContext.New(config);
@@ -44,11 +45,17 @@ namespace best_discount.Modules
                 {
                     if (product != null && !string.IsNullOrEmpty(product.Category))
                     {
-                        if (!pageData.ContainsKey(product.Category))
+                        // Prevent duplicates
+                        if (!visitedProducts.Contains(product))
                         {
-                            pageData[product.Category] = new List<Product>();
+                            visitedProducts.Add(product);
+
+                            if (!pageData.ContainsKey(product.Category))
+                            {
+                                pageData[product.Category] = new List<Product>();
+                            }
+                            pageData[product.Category].Add(product);
                         }
-                        pageData[product.Category].Add(product);
                     }
                 }
             }

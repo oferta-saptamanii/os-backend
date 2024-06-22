@@ -311,7 +311,19 @@ fragment MobileFee on MobileFee {
                         {
                             var responseContent = await response.Content.ReadAsStringAsync();
                             var products = ProcessPage(responseContent, cat.Key);
-                            pageData.Add(cat.Key, products);
+
+                            // Prevent duplicates
+                            HashSet<Product> uniqueProducts = new HashSet<Product>(pageData.ContainsKey(cat.Key) ? pageData[cat.Key] : Enumerable.Empty<Product>());
+
+                            foreach (var product in products)
+                            {
+                                if (!uniqueProducts.Contains(product))
+                                {
+                                    uniqueProducts.Add(product);
+                                }
+                            }
+
+                            pageData[cat.Key] = uniqueProducts.ToList();
                         }
                         else
                         {

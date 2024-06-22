@@ -62,7 +62,19 @@ namespace best_discount.Modules
                             {
                                 var absoluteUrl = new Uri(new Uri(url), href).ToString();
                                 var products = await ProcessPageAsync(absoluteUrl, document.Context, titleHref, imgHref);
-                                pageData.Add(titleHref, products);
+
+                                // Prevent duplicates
+                                HashSet<Product> uniqueProducts = new HashSet<Product>(pageData.ContainsKey(titleHref) ? pageData[titleHref] : Enumerable.Empty<Product>());
+
+                                foreach (var product in products)
+                                {
+                                    if (!uniqueProducts.Contains(product))
+                                    {
+                                        uniqueProducts.Add(product);
+                                    }
+                                }
+
+                                pageData[titleHref] = uniqueProducts.ToList();
                             }
                         }
                     }
@@ -75,6 +87,7 @@ namespace best_discount.Modules
 
             return pageData;
         }
+
 
         private static async Task<List<Product>> ProcessPageAsync(string url, IBrowsingContext context, string pageTitle, string pageImg)
         {
