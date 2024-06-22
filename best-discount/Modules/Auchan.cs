@@ -1,5 +1,7 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
+using best_discount.Models;
+using best_discount.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -9,7 +11,8 @@ using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static best_discount.Utils;
+using static best_discount.Utilities.Utils;
+using static Google.Rpc.Context.AttributeContext.Types;
 
 namespace best_discount.Modules
 {
@@ -55,7 +58,7 @@ namespace best_discount.Modules
         static async Task<List<Product>> ProcessPageAsync(string url, IBrowsingContext context)
         {
             var document = await context.OpenAsync(url);
-            var category = document?.QuerySelector("*[xpath>'/html/body/div[2]/div/div[1]/div/div[3]/div/div[1]/div/section/div/div/div/div/h1']")?.TextContent.Trim();
+            var category = document?.QuerySelector(".vtex-rich-text-0-x-heading.vtex-rich-text-0-x-heading--collectionTitle")?.TextContent.Trim();
             var products = new List<Product>();
 
             var campaignGrid = document.QuerySelector("div.vtex-search-result-3-x-gallery.flex.flex-row.flex-wrap.items-stretch.bn.ph1.na4.pl9-l");
@@ -122,20 +125,24 @@ namespace best_discount.Modules
                     Utils.Report("Failed to fetch initial page content", ErrorType.ERROR);
                     return catalogData;
                 }
+                
 
                 var document = await ParseHtml(htmlContent);
-
+                File.WriteAllText("auch.html", document.ToHtml().ToString());
                 var layoutElement = document.QuerySelector(".vtex-list-context-0-x-list.vtex-list-context-0-x-list--modular4Banner");
                 var divElements = layoutElement?.QuerySelectorAll(".vtex-list-context-0-x-item.vtex-list-context-0-x-item--modular4Banner").OfType<IElement>().ToList();
 
-                foreach (var element in divElements)
-                {
-                    var catalog = await CreateCatalog(client, element);
-                    if(catalog != null)
+                if(divElements != null)
+                    foreach (var element in divElements)
                     {
-                        catalogData.Add(catalog);
+                        var catalog = await CreateCatalog(client, element);
+                        if(catalog != null)
+                        {
+                            catalogData.Add(catalog);
+                        }
                     }
-                }
+                else
+                    Utils.Report($"divElements not found", Utils.ErrorType.ERROR);
             }
 
             return catalogData;

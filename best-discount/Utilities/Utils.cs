@@ -8,8 +8,9 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.IO.Compression;
 
-namespace best_discount
+namespace best_discount.Utilities
 {
     public static class Utils
     {
@@ -37,7 +38,7 @@ namespace best_discount
         [CallerFilePath] string filePath = "",
         [CallerLineNumber] int lineNumber = 0)
         {
-            string className = System.IO.Path.GetFileNameWithoutExtension(filePath);
+            string className = Path.GetFileNameWithoutExtension(filePath);
             string errorType = type == ErrorType.ERROR ? "ERROR" : "EXCEPTION";
 
             Console.WriteLine($"{className}:{lineNumber} {memberName}: {errorType} - {message}");
@@ -54,7 +55,28 @@ namespace best_discount
             {
                 return null;
             }
-            return await response.Content.ReadAsStringAsync();
+
+            var contentStream = await response.Content.ReadAsStreamAsync();
+            string contentEncoding = response.Content.Headers.ContentEncoding.FirstOrDefault();
+
+            if (contentEncoding == "gzip")
+            {
+                using (var decompressedStream = new GZipStream(contentStream, CompressionMode.Decompress))
+                using (var reader = new StreamReader(decompressedStream))
+                {
+                    return await reader.ReadToEndAsync();
+                }
+            }
+            else if (contentEncoding == "deflate")
+            {
+                using (var decompressedStream = new DeflateStream(contentStream, CompressionMode.Decompress))
+                using (var reader = new StreamReader(decompressedStream))
+                {
+                    return await reader.ReadToEndAsync();
+                }
+            }
+            else
+                return await response.Content.ReadAsStringAsync();
         }
 
         public static async Task<IDocument> ParseHtml(string htmlContent)

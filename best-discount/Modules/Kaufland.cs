@@ -1,9 +1,11 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
+using best_discount.Models;
+using best_discount.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
-using static best_discount.Utils;
+using static best_discount.Utilities.Utils;
 
 namespace best_discount.Modules
 {

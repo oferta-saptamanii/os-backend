@@ -1,4 +1,6 @@
 ﻿using AngleSharp;
+using best_discount.Models;
+using best_discount.Utilities;
 using System.Text.RegularExpressions;
 
 namespace best_discount.Modules
@@ -55,24 +57,24 @@ namespace best_discount.Modules
 
                 // Oferte Speciale
                 // action - load_coupons_by_type
-                // nonce - d808cd9cdc
+                // nonce - 65abfa63aa
 
                 // Top oferte
                 // action - load_offers_by_type
-                // nonce - 0b63bdafe4
+                // nonce - 43a9dd0473
 
                 var categoryActions = new Dictionary<string, List<(string action, string nonce)>>
                 {
                     {
                         "Oferte Speciale", new List<(string action, string nonce)>
                         {
-                            ("load_coupons_by_type", "d808cd9cdc")
+                            ("load_coupons_by_type", "65abfa63aa")
                         }
                     },
                     {
                         "Top Oferte", new List<(string action, string nonce)>
                         {
-                            ("load_offers_by_type", "0b63bdafe4")
+                            ("load_offers_by_type", "43a9dd0473")
                         }
                     }
                 };

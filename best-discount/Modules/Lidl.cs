@@ -1,6 +1,8 @@
 ﻿using AngleSharp;
 using AngleSharp.Dom;
 using AngleSharp.Html.Dom;
+using best_discount.Models;
+using best_discount.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -9,7 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static best_discount.Utils;
+using static best_discount.Utilities.Utils;
 
 namespace best_discount.Modules
 {
@@ -82,7 +84,7 @@ namespace best_discount.Modules
             var campaignGrid = document.QuerySelector("ol.ACampaignGrid");
             if (campaignGrid != null)
             {
-                var productItems = campaignGrid.QuerySelectorAll("li.ACampaignGrid__item--product.ACampaignGrid__item");
+                var productItems = campaignGrid.QuerySelectorAll(".ACampaignGrid__item.ACampaignGrid__item--product");
 
                 foreach (var productItem in productItems)
                 {

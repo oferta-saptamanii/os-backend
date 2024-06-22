@@ -1,4 +1,6 @@
 ﻿using AngleSharp;
+using best_discount.Models;
+using best_discount.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;

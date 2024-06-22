@@ -1,5 +1,7 @@
 ﻿using AngleSharp;
 using AngleSharp.Html.Dom;
+using best_discount.Models;
+using best_discount.Utilities;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -7,7 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using static best_discount.Utils;
+using static best_discount.Utilities.Utils;
 
 namespace best_discount.Modules
 {
