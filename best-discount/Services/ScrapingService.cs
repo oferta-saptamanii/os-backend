@@ -1,5 +1,6 @@
 ﻿using best_discount.Models;
 using best_discount.Modules;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +11,12 @@ namespace best_discount.Services
 {
     public class ScrapingService
     {
+        private readonly SeleniumService _seleniumService;
+        public ScrapingService()
+        {
+            _seleniumService = new SeleniumService();
+        }
+
         public async Task<Dictionary<string, Dictionary<string, List<Product>>>> GetProducts()
         {
             var aggregatedResults = new Dictionary<string, Dictionary<string, List<Product>>>();
@@ -49,10 +56,17 @@ namespace best_discount.Services
             var kauflandResults = await Kaufland.GetAllCatalogs();
             var auchanResults = Transform(await Auchan.GetCatalog(), "Auchan");
 
+            var profi = new Profi(_seleniumService);
+            var profiResults = Transform(await profi.GetCatalog(), "Profi");
+
+            var mega = new MegaImage(_seleniumService);
+            var megaResults = Transform(await mega.GetCatalog(), "MegaImage");
             aggregatedResults.Add("Lidl", lidlResults);
             aggregatedResults.Add("Kaufland", kauflandResults);
             aggregatedResults.Add("Auchan", auchanResults);
-
+            aggregatedResults.Add("Profi", profiResults);
+            aggregatedResults.Add("MegaImage", megaResults);
+            _seleniumService.Quit();
             return aggregatedResults;
         }
 

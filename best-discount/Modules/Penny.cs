@@ -99,10 +99,20 @@ namespace best_discount.Modules
                     product.CurrentPrice = ConvertToCurrency(regularToken["value"]?.ToString());
                 }
 
-                product.OriginalPrice = ConvertToCurrency(priceToken["lowestPrice"]?.ToString());
+                
                 product.DiscountPercentage = priceToken["discountPercentage"]?.ToString() ?? null;
                 if (product.DiscountPercentage != null)
+                {
+                    product.OriginalPrice = ConvertToCurrency(priceToken["lowestPrice"]?.ToString());
                     product.DiscountPercentage += "%";
+                }
+                else
+                {
+                    product.OriginalPrice = priceToken["value"]?.ToString() ?? null;
+                    product.CurrentPrice = ConvertToCurrency(priceToken["lowestPrice"]?.ToString());
+                }
+                    
+
 
                 string validityStart = priceToken["validityStart"]?.ToString();
                 string validityEnd = priceToken["validityEnd"]?.ToString();

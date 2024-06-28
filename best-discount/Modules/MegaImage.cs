@@ -1,21 +1,24 @@
 ﻿using AngleSharp;
 using best_discount.Models;
+using best_discount.Services;
 using best_discount.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Interactions;
 using System.Text;
-using System.Threading.Tasks;
+using static best_discount.Utilities.Utils;
 
 namespace best_discount.Modules
 {
     public class MegaImage
     {
+        private readonly SeleniumService _seleniumService;
 
+        public MegaImage(SeleniumService seleniumService) 
+        {
+            _seleniumService = seleniumService;
+        }
 
         static Dictionary<string, string> megaCategories = new Dictionary<string, string>() {
             { "Animale de companie", "promotions:relevance:rootCategoryNameFacet:Animale+de+companie" },
@@ -374,6 +377,48 @@ fragment MobileFee on MobileFee {
             }
 
             return products;
+        }
+
+        public async Task<List<Catalog>> GetCatalog()
+        {
+            Console.WriteLine("Scraping MegaImage Catalogs...");
+            var url = "https://www.mega-image.ro/catalogul-lunii";
+            var catalogData = new List<Catalog>();
+            try
+            {
+                var driver = _seleniumService.GetDriver();
+                var actions = new Actions(driver);
+
+                // Navigate to the URL
+                driver.Navigate().GoToUrl(url);
+
+                // Wait for the page to load (adjust the wait time according to your needs)
+                await Task.Delay(5000); // Example: Wait for 5 seconds (you may need to adjust this)
+
+                var acceptCookies = driver.FindElement(By.CssSelector(".sc-46osa9-0.sc-46osa9-1.eWguPt.fhezIa.false"));
+                actions.MoveToElement(acceptCookies).Click().Perform();
+
+                await Task.Delay(3333);
+                driver.SwitchTo().DefaultContent();
+
+                var iframes = driver.FindElements(By.TagName("iframe"));
+
+                // Iterate through each iframe and print its src attribute
+                foreach (var iframe in iframes)
+                {
+                    string src = iframe.GetAttribute("src");
+                    Console.WriteLine("Iframe src: " + src);
+                }
+
+                string source = driver.PageSource;
+                File.WriteAllText("meg.html", source);
+            }
+            catch (Exception ex)
+            {
+                Utils.Report($"An error occurred while scraping MegaImage catalogs: {ex.Message}", ErrorType.EXCEPTION);
+            }
+
+            return catalogData;
         }
     }
 }

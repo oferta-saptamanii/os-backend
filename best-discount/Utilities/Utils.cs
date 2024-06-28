@@ -9,6 +9,9 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO.Compression;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace best_discount.Utilities
 {
@@ -84,6 +87,62 @@ namespace best_discount.Utilities
             var config = Configuration.Default.WithDefaultLoader().WithXPath();
             var context = BrowsingContext.New(config);
             return await context.OpenAsync(req => req.Content(htmlContent));
+        }
+
+        public static async Task DownloadImage(string imageUrl, string destinationPath)
+        {
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(imageUrl);
+                if (response.IsSuccessStatusCode)
+                {
+                    using (var stream = await response.Content.ReadAsStreamAsync())
+                    {
+                        using (var fileStream = new FileStream(destinationPath, FileMode.Create))
+                        {
+                            await stream.CopyToAsync(fileStream);
+                        }
+                    }
+                }
+            }
+        }
+
+        public static void PdfFromImages(List<string> imagePaths, string pdfFilePath)
+        {
+            using (PdfDocument pdf = new PdfDocument())
+            {
+                try
+                {
+                    foreach (var imagePath in imagePaths)
+                    {
+                        using (var image = SixLabors.ImageSharp.Image.Load(imagePath))
+                        {
+                            using (var ms = new MemoryStream())
+                            {
+                                image.Save(ms, new PngEncoder());  // Convert to PNG and save to MemoryStream
+                                ms.Seek(0, SeekOrigin.Begin);  // Reset MemoryStream position
+
+                                PdfPage page = pdf.AddPage();
+                                using (XGraphics gfx = XGraphics.FromPdfPage(page))
+                                {
+                                    // Creating a function that returns the stream
+                                    Func<Stream> streamFunc = () => new MemoryStream(ms.ToArray());
+                                    using (XImage xImage = XImage.FromStream(streamFunc))
+                                    {
+                                        gfx.DrawImage(xImage, 0, 0, page.Width, page.Height);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    pdf.Save(pdfFilePath);
+                    Console.WriteLine($"PDF saved: {pdfFilePath}");
+                }
+                catch (Exception ex)
+                {
+                    Utils.Report($"An error occurred while saving the PDF: {ex.Message}", ErrorType.EXCEPTION);
+                }
+            }
         }
     }
 }

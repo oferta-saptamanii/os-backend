@@ -26,9 +26,9 @@ namespace best_discount
             var scrapingService = new ScrapingService();
             var firestoreService = new FirestoreService(db);
 
-            // Scrape and save catalogs
-            var catalogResults = await scrapingService.GetCatalogs();
-            await firestoreService.SaveCatalogs(catalogResults);
+             // Scrape and save catalogs
+             var catalogResults = await scrapingService.GetCatalogs();
+             await firestoreService.SaveCatalogs(catalogResults);
 
             // Scrape and save products
             var productResults = await scrapingService.GetProducts();
