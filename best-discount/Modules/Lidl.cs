@@ -11,6 +11,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Web;
 using static best_discount.Utilities.Utils;
 
 namespace best_discount.Modules
@@ -35,7 +36,8 @@ namespace best_discount.Modules
                 }
 
                 var document = await ParseHtml(htmlContent);
-                var div = document.QuerySelector("div.AHeroStageGroup__Body-Current_Sales_Week.AHeroStageGroup__Body");
+
+                var div = document.QuerySelector("ol.AHeroStageItems__List");
 
                 if (div != null)
                 {
@@ -50,12 +52,17 @@ namespace best_discount.Modules
                         var linkElement = listItem.QuerySelector("a.AHeroStageItems__Item--Wrapper");
                         if (linkElement != null)
                         {
+                            // TheImage TheImage--object-fit-cover AHeroStageItems__Item--Image
                             var imgElement = linkElement.QuerySelector("div.TheImage.TheImage--object-fit-cover.AHeroStageItems__Item--Image img");
                             if (imgElement != null)
                             {
+                               
                                 imgHref = new Uri(new Uri(url), imgElement.GetAttribute("src")).ToString();
                                 titleHref = imgElement.GetAttribute("alt");
                             }
+
+                            titleHref = linkElement.QuerySelector("div.AHeroStageItems__Item--Details .AHeroStageItems__Item--Headline")?.TextContent?.Trim();
+
 
                             var href = linkElement.GetAttribute("href");
                             if (!string.IsNullOrEmpty(href))
@@ -63,7 +70,6 @@ namespace best_discount.Modules
                                 var absoluteUrl = new Uri(new Uri(url), href).ToString();
                                 var products = await ProcessPageAsync(absoluteUrl, document.Context, titleHref, imgHref);
 
-                                // Prevent duplicates
                                 HashSet<Product> uniqueProducts = new HashSet<Product>(pageData.ContainsKey(titleHref) ? pageData[titleHref] : Enumerable.Empty<Product>());
 
                                 foreach (var product in products)
@@ -93,11 +99,12 @@ namespace best_discount.Modules
         {
             var document = await context.OpenAsync(url);
             var productList = new List<Product>();
-
-            var campaignGrid = document.QuerySelector("ol.ACampaignGrid");
+            // ATheCampaign__Section--10184262 ATheCampaign__Section
+            var campaignGrid = document.QuerySelector(".ATheCampaign__Section .ANewGridBox .OdsTileGrid");
             if (campaignGrid != null)
             {
-                var productItems = campaignGrid.QuerySelectorAll(".ACampaignGrid__item.ACampaignGrid__item--product");
+                //ods-tile ods-tile--with-label ods-tile--label-blue product-grid-box
+                var productItems = campaignGrid.QuerySelectorAll(".ACampaignGrid__item");
 
                 foreach (var productItem in productItems)
                 {
@@ -114,39 +121,59 @@ namespace best_discount.Modules
 
         private static Product ExtractProductData(IElement productItem, string pageImg)
         {
-            var productGridBox = productItem.QuerySelector("div.AProductGridBox");
-            if (productGridBox == null)
+            File.WriteAllText("caca.html", productItem?.ToHtml());
+
+            var data = productItem.GetAttribute("data-grid-data");
+            if (data == null)
             {
                 return null;
             }
 
-            var product = new Product
-            {
-                Image = productGridBox.GetAttribute("image"),
-                FullTitle = productGridBox.GetAttribute("fulltitle"),
-                Category = productGridBox.GetAttribute("category"),
-                ProductUrl = "https://www.lidl.ro" + productGridBox.GetAttribute("canonicalurl"),
-                ProductImg = pageImg
-            };
+            var obj = JObject.Parse(data);
 
-            var detailGrids = productGridBox.QuerySelector("div.detail__grids");
-            if (detailGrids != null)
+            var price = obj?["price"]?["price"]?.ToString().Replace(",", ".");
+            string discountText = null;
+            try
             {
-                var dataGridData = detailGrids.GetAttribute("data-grid-data");
-                if (!string.IsNullOrEmpty(dataGridData))
-                {
-                    var data = JsonConvert.DeserializeObject<List<GridData>>(System.Net.WebUtility.HtmlDecode(dataGridData));
-                    if (data != null && data.Count > 0)
-                    {
-                        var gridData = data[0];
-                        product.AvailableDate = gridData.Ribbons?.FirstOrDefault()?.Text;
-                        product.DiscountPercentage = gridData.Price?.Discount?.DiscountText;
-                        product.OriginalPrice = gridData.Price?.OldPrice?.ToString();
-                        product.CurrentPrice = gridData.Price?.Priced?.ToString();
-                    }
-                }
+                discountText = obj?["price"]?["discount"]?["discountText"]?.ToString();
+            }
+            catch (Exception ex)
+            {
+                //Console.WriteLine($"error  discountText: {ex.Message}");
             }
 
+
+            var oldPrice = obj?["price"]?["oldPrice"]?.ToString().Replace(",", ".");
+            var image = obj?["image"]?.ToString();
+            var fullTitle = obj?["keyfacts"]?["fullTitle"]?.ToString();
+            var canonicalPath = obj?["canonicalPath"]?.ToString();
+            var category = obj?["keyfacts"]?["analyticsCategory"]?.ToString();
+            var ava = obj?["ribbons"]?.FirstOrDefault()?["text"]?.ToString();
+
+            
+            var packagingText = "";
+            var packagingToken = obj?["price"]?["packaging"];
+
+            if (packagingToken != null && packagingToken.Type == JTokenType.Object)
+            {
+                packagingText = packagingToken["text"]?.ToString();
+            }
+
+
+            var product = new Product
+            {
+                Image = image,
+                FullTitle = fullTitle,
+                Category = category,
+                AvailableDate = ava,
+                ProductUrl = "https://www.lidl.ro" + canonicalPath,
+                ProductImg = pageImg,
+                Quantity = packagingText,
+                DiscountPercentage = discountText,
+                OriginalPrice = oldPrice,
+                CurrentPrice = price,
+                StoreName = "Lidl"
+            };
             return product;
         }
         #endregion
@@ -285,6 +312,15 @@ namespace best_discount.Modules
 
         [JsonProperty("discount")]
         public Discount Discount { get; set; }
+
+        [JsonProperty("packaging")]
+        public Packaging packaging { get; set; }
+    }
+
+    public class Packaging
+    {
+        [JsonProperty("text")]
+        public string? Text { get; set; }
     }
 
     public class Discount

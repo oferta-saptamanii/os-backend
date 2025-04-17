@@ -89,12 +89,12 @@ namespace best_discount.Modules
                     var priceElement = item.QuerySelector("span.vtex-product-price-1-x-sellingPrice span.vtex-product-price-1-x-currencyContainer");
                     var priceInteger = priceElement?.QuerySelector("span.vtex-product-price-1-x-currencyInteger")?.TextContent;
                     var priceFraction = priceElement?.QuerySelector("span.vtex-product-price-1-x-currencyFraction")?.TextContent;
-                    var currentPrice = $"{priceInteger},{priceFraction}";
+                    var currentPrice = $"{priceInteger}.{priceFraction}";
 
                     var originalPriceElement = item.QuerySelector("span.vtex-product-price-1-x-listPrice span.vtex-product-price-1-x-currencyContainer");
                     var originalPriceInteger = originalPriceElement?.QuerySelector("span.vtex-product-price-1-x-currencyInteger")?.TextContent;
                     var originalPriceFraction = originalPriceElement?.QuerySelector("span.vtex-product-price-1-x-currencyFraction")?.TextContent;
-                    var originalPrice = $"{originalPriceInteger},{originalPriceFraction}";
+                    var originalPrice = $"{originalPriceInteger}.{originalPriceFraction}";
 
                     var discountElement = item.QuerySelector("span.auchan-loyalty-0-x-listDiscountPercentage");
                     var discountPercentage = discountElement?.TextContent.Trim();
@@ -103,12 +103,14 @@ namespace best_discount.Modules
                     var availableDate = dateElement?.TextContent.Trim();
 
                     product.FullTitle = name;
+                    product.Quantity = GetQuantity(name);
                     product.ProductUrl = new Uri(new Uri(url), productUrl).ToString();
                     product.Image = image;
                     product.DiscountPercentage = discountPercentage;
                     product.OriginalPrice = originalPrice;
                     product.CurrentPrice = currentPrice;
                     product.AvailableDate = availableDate;
+                    product.StoreName = "Auchan";
                     //Console.WriteLine($"{category}, {product.ProductUrl}, {product.Image}, {product.DiscountPercentage}, {product.OriginalPrice}, {product.CurrentPrice}, {product.AvailableDate}");
                     products.Add(product);
                 }
@@ -116,6 +118,7 @@ namespace best_discount.Modules
             return products;
         }
 
+        
         #region catalogs
         public static async Task<List<Catalog>> GetCatalog()
         {

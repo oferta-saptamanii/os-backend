@@ -1,21 +1,24 @@
 ﻿using AngleSharp;
 using best_discount.Models;
+using best_discount.Services;
 using best_discount.Utilities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Interactions;
 using System.Text;
-using System.Threading.Tasks;
+using static best_discount.Utilities.Utils;
 
 namespace best_discount.Modules
 {
     public class MegaImage
     {
+        private readonly SeleniumService _seleniumService;
 
+        public MegaImage(SeleniumService seleniumService) 
+        {
+            _seleniumService = seleniumService;
+        }
 
         static Dictionary<string, string> megaCategories = new Dictionary<string, string>() {
             { "Animale de companie", "promotions:relevance:rootCategoryNameFacet:Animale+de+companie" },
@@ -352,17 +355,28 @@ fragment MobileFee on MobileFee {
 
                 foreach (var product in productList)
                 {
+                    var price = product?["price"]["discountedPriceFormatted"].ToString();
+                    var oldPRice = product?["price"]["formattedValue"].ToString();
 
+                    price = price.Replace("Lei", "").Replace(",", ".").Trim();
+                    oldPRice = oldPRice.Replace("Lei", "").Replace(",", ".").Trim();
+
+                    var images = (JArray)product?["images"];
+
+                    var zoomImage = images.FirstOrDefault(img => (string)img["format"] == "zoom");
+                    var selectedImage = zoomImage ?? images.First();
                     var productInfo = new Product
                     {
                         FullTitle = product?["name"].ToString(),
-                        Image = "https://www.mega-image.ro" + product?["images"][0]["url"].ToString(),
+                        Image = "https://www.mega-image.ro" + selectedImage?["url"]?.ToString(),
                         Category = cat,
                         AvailableDate = product?["potentialPromotions"][0]["endDate"].ToString(),
                         DiscountPercentage = product?["potentialPromotions"][0]["simplePromotionMessage"].ToString(),
                         ProductUrl = "https://www.mega-image.ro" + product?["url"].ToString(),
-                        CurrentPrice = product?["price"]["discountedPriceFormatted"].ToString(),
-                        OriginalPrice = product?["price"]["formattedValue"].ToString()
+                        CurrentPrice = price,
+                        OriginalPrice = oldPRice,
+                        Quantity = GetQuantity(product?["name"].ToString()),
+                        StoreName = "MegaImage"
                 };
 
                     products.Add(productInfo);
@@ -374,6 +388,45 @@ fragment MobileFee on MobileFee {
             }
 
             return products;
+        }
+
+        public async Task<List<Catalog>> GetCatalog()
+        {
+            Console.WriteLine("Scraping MegaImage Catalogs...");
+            var url = "https://www.mega-image.ro/catalogul-lunii";
+            var catalogData = new List<Catalog>();
+            try
+            {
+                var driver = _seleniumService.GetDriver();
+                var actions = new Actions(driver);
+
+                driver.Navigate().GoToUrl(url);
+
+                await Task.Delay(5000);
+
+                var acceptCookies = driver.FindElement(By.CssSelector(".sc-46osa9-0.sc-46osa9-1.eWguPt.fhezIa.false"));
+                actions.MoveToElement(acceptCookies).Click().Perform();
+
+                await Task.Delay(3333);
+                driver.SwitchTo().DefaultContent();
+
+                var iframes = driver.FindElements(By.TagName("iframe"));
+
+                foreach (var iframe in iframes)
+                {
+                    string src = iframe.GetAttribute("src");
+                    Console.WriteLine("Iframe src: " + src);
+                }
+
+                string source = driver.PageSource;
+                File.WriteAllText("meg.html", source);
+            }
+            catch (Exception ex)
+            {
+                Utils.Report($"An error occurred while scraping MegaImage catalogs: {ex.Message}", ErrorType.EXCEPTION);
+            }
+
+            return catalogData;
         }
     }
 }

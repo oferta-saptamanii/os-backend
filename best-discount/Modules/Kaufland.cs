@@ -11,10 +11,12 @@ namespace best_discount.Modules
 {
     internal class Kaufland
     {
+        // https://www.kaufland.ro/oferte/prezentare-generala-oferte.html?kloffer-week=current
+
         public static async Task<Dictionary<string, List<Product>>> ScrapeAsync()
         {
             Console.WriteLine("Scraping Kaufland...");
-            string url = "https://www.kaufland.ro/oferte/oferte-saptamanale/saptamana-curenta.html";
+            string url = "https://www.kaufland.ro/oferte/prezentare-generala-oferte.html?kloffer-week=current";
             var pageData = new Dictionary<string, List<Product>>();
 
             using (HttpClient client = new HttpClient())
@@ -22,147 +24,151 @@ namespace best_discount.Modules
                 HttpResponseMessage response = await client.GetAsync(url);
                 string htmlContent = await response.Content.ReadAsStringAsync();
 
-                var config = Configuration.Default.WithDefaultLoader().WithXPath();
+                var config = Configuration.Default.WithDefaultLoader();
                 var context = BrowsingContext.New(config);
                 var document = await context.OpenAsync(req => req.Content(htmlContent));
 
-                // Select the div that contains the main offer
-                var div = document.QuerySelector("#offers-overview-1");
-                if (div != null)
+                var mainElement = document.QuerySelector("main.page__content");
+                if (mainElement != null)
                 {
-                    var boxWithin = div.QuerySelector("ul.m-accordion__list.m-accordion__list--level-2");
-                    if (boxWithin != null)
-                    {
-                        var listItems = boxWithin.QuerySelectorAll("li.m-accordion__item.m-accordion__item--level-2");
-                        foreach (var listItem in listItems)
-                        {
-                            var linkElement = listItem.QuerySelector("a.m-accordion__link");
-                            if (linkElement != null)
-                            {
-                                var category = linkElement.TextContent.Trim();
-                                var href = linkElement.GetAttribute("href");
-                                if (!string.IsNullOrEmpty(href))
-                                {
-                                    var absoluteUrl = new Uri(new Uri(url), href).ToString();
-                                    //Console.WriteLine($"Navigating to: {absoluteUrl} | {category}");
+                    //Console.WriteLine("Found 'main.page__content'.");
 
-                                    var products = await ProcessPageAsync(absoluteUrl, context, category);
-                                    pageData.Add(category, products);
+                    var scriptTags = mainElement.QuerySelectorAll("script");
+
+                    foreach (var scriptTag in scriptTags)
+                    {
+                        var scriptContent = scriptTag.TextContent.Trim();
+                        if (!string.IsNullOrEmpty(scriptContent))
+                        {
+                            //Console.WriteLine("detected non empty script tag");
+
+                            try
+                            {
+                                var componentIndex = scriptContent.IndexOf("\"component\"");
+                                if (componentIndex > 2) 
+                                {
+                                    var jsonStartIndex = scriptContent.LastIndexOf("{", componentIndex);
+                                    if (jsonStartIndex >= 0)
+                                    {
+                                        var jsonContent = scriptContent.Substring(jsonStartIndex);
+                                        var jsonData = JObject.Parse(jsonContent);
+
+                                        var offerData = jsonData["props"]?["offerData"]?["cycles"];
+                                        if (offerData != null)
+                                        {
+                                            foreach (var cycle in offerData)
+                                            {
+                                                var categories = cycle["categories"];
+                                                foreach (var category in categories)
+                                                {
+                                                    var categoryName = category["displayName"]?.ToString();
+                                                    var dateFrom = category["dateFrom"]?.ToString();
+                                                    var dateTo = category["dateTo"]?.ToString();
+
+                                                    var offers = category["offers"];
+                                                    var products = new List<Product>();
+
+                                                    foreach (var offer in offers)
+                                                    {
+                                                        var product = new Product
+                                                        {
+                                                            FullTitle = offer["title"]?.ToString(),
+                                                            ProductUrl = "", // No direct URL in JSON
+                                                            Image = offer["listImage"]?.ToString(),
+                                                            Quantity = offer["unit"]?.ToString(),
+                                                            DiscountPercentage = offer["discount"]?.ToString(),
+                                                            OriginalPrice = offer["formattedOldPrice"]?.ToString() ?? offer["loyaltyFormattedOldPrice"]?.ToString(),
+                                                            CurrentPrice = offer["formattedPrice"]?.ToString() ?? offer["loyaltyFormattedPrice"]?.ToString(),
+                                                            Category = categoryName,
+                                                            AvailableDate = $"{dateFrom} - {dateTo}",
+                                                            StoreName = "Kaufland"
+                                                        };
+                                                        
+                                                        products.Add(product);
+                                                    }
+
+                                                    if (!pageData.ContainsKey(categoryName))
+                                                    {
+                                                        pageData[categoryName] = new List<Product>();
+                                                    }
+
+                                                    pageData[categoryName].AddRange(products);
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Console.WriteLine("Failed to locate the start of JSON.");
+                                    }
+                                }
+                                else
+                                {
+                                    Console.WriteLine("\"component\" key not found or not enough space to backtrack.");
                                 }
                             }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error parsing JSON: {ex.Message}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Empty <script> tag detected. Skipping...");
                         }
                     }
-
                 }
                 else
                 {
-                    Console.WriteLine("Div not found.");
-                }
-
-                var divSpecial = document.QuerySelector("#offers-overview-2");
-                if (divSpecial != null)
-                {
-                    var boxWithin = divSpecial.QuerySelector("ul.m-accordion__list.m-accordion__list--level-2");
-                    if (boxWithin != null)
-                    {
-                        var listItems = boxWithin.QuerySelectorAll("li.m-accordion__item.m-accordion__item--level-2");
-                        foreach (var listItem in listItems)
-                        {
-                            var linkElement = listItem.QuerySelector("a.m-accordion__link");
-                            if (linkElement != null)
-                            {
-                                var category = linkElement.TextContent.Trim();
-                                var href = linkElement.GetAttribute("href");
-                                if (!string.IsNullOrEmpty(href))
-                                {
-                                    var absoluteUrl = new Uri(new Uri(url), href).ToString();
-                                    var scrapedProducts = await ProcessPageAsync(absoluteUrl, context, category);
-                                    HashSet<Product> uniqueProducts = new HashSet<Product>(scrapedProducts);
-
-                                    if (!pageData.ContainsKey(category))
-                                    {
-                                        pageData[category] = new List<Product>();
-                                    }
-
-                                    foreach (var product in uniqueProducts)
-                                    {
-                                        pageData[category].Add(product);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                else
-                {
-                    Utils.Report("div not found", ErrorType.ERROR);
+                    Console.WriteLine("'main.page__content' not found in the document.");
                 }
             }
+
             return pageData;
         }
 
 
-        static async Task<List<Product>> ProcessPageAsync(string url, IBrowsingContext context, string category)
+        static List<Product> ExtractProductsFromGrid(IElement productGrid, string category, string offerDuration, string baseUrl)
         {
-            var document = await context.OpenAsync(url);
-
             var productList = new List<Product>();
 
-            var campaignGrid = document.QuerySelector("div.g-row.g-layout-overview-tiles.g-layout-overview-tiles--offers");
-            if (campaignGrid != null)
+            if (productGrid != null)
             {
-                var productItems = campaignGrid.QuerySelectorAll("div.g-col.o-overview-list__list-item");
+                var productItems = productGrid.QuerySelectorAll(".k-product-grid__item");
                 foreach (var productItem in productItems)
                 {
-                    var offerTile = productItem.QuerySelector("div.o-overview-list__item-inner div.m-offer-tile.m-offer-tile--line-through.m-offer-tile--uppercase-subtitle.m-offer-tile--mobile");
-                    if (offerTile != null)
+                    var tile = productItem.QuerySelector(".k-product-tile");
+                    if (tile != null)
                     {
-                        var dataAaComponent = offerTile.GetAttribute("data-aa-component");
-                        var componentData = JsonConvert.DeserializeObject<Dictionary<string, string>>(dataAaComponent);
-                        var fullTitle = componentData.GetValueOrDefault("subComponent1Name");
+                        var productName = tile.QuerySelector(".k-product-tile__title")?.TextContent.Trim();
 
-                        var linkElement = offerTile.QuerySelector("a.m-offer-tile__link.u-button--hover-children");
-                        var productUrl = linkElement?.GetAttribute("href");
+                        var imageUrl = tile.QuerySelector(".k-product-tile__image img")?.GetAttribute("src") ??
+                                       tile.QuerySelector(".k-product-tile__image img")?.GetAttribute("data-src");
 
-                        var imgElement = offerTile.QuerySelector("div.m-offer-tile__container div.m-offer-tile__image figure.m-figure img.a-image-responsive");
-                        var imageUrl = imgElement?.GetAttribute("src");
+                        var discountPercentage = tile.QuerySelector(".k-price-tag__discount")?.TextContent.Trim();
 
-                        if (imageUrl == null || imageUrl.StartsWith("data:"))
-                        {
-                            imageUrl = imgElement?.GetAttribute("data-src");
-                        }
+                        var currentPrice = tile.QuerySelector(".k-price-tag__price")?.TextContent.Replace(",", ".").Trim();
 
-                        var availableDate = document.QuerySelector("*[xpath>'/html/body/div[2]/main/div[1]/div/div/div[3]/div/div/div/div[2]/div/h2']")?.TextContent.Trim();
-                        if (availableDate != null)
-                        {
-                            availableDate = availableDate.Replace("Valabilitate: din ", "").Replace(" până în ", " - ").Replace(".2024", ".");
-                        }
-
-                        var priceTile = offerTile.QuerySelector("div.m-offer-tile__split div.m-offer-tile__price-tiles div.a-pricetag");
-                        var discountPercentage = priceTile?.QuerySelector("div.a-pricetag__discount")?.TextContent.Trim();
-
-                        var originalPriceElement = priceTile?.QuerySelector("div.a-pricetag__old-price span.a-pricetag__old-price.a-pricetag__line-through");
-                        var originalPrice = string.IsNullOrEmpty(originalPriceElement?.TextContent.Trim()) ? null : originalPriceElement.TextContent.Trim();
-
-                        var currentPrice = priceTile?.QuerySelector("div.a-pricetag__price-container div.a-pricetag__price")?.TextContent.Trim();
+                        var oldPrice = tile.QuerySelector(".k-price-tag__old-price span")?.TextContent.Replace(",", ".").Trim();
 
                         var product = new Product
                         {
-                            FullTitle = fullTitle,
-                            ProductUrl = new Uri(new Uri(url), productUrl).ToString(),
+                            FullTitle = productName,
+                            ProductUrl = baseUrl, // base URL
                             Image = imageUrl,
                             DiscountPercentage = discountPercentage,
-                            OriginalPrice = originalPrice,
+                            OriginalPrice = oldPrice,
                             CurrentPrice = currentPrice,
                             Category = category,
-                            AvailableDate = availableDate
+                            AvailableDate = offerDuration,
+                            StoreName = "Kaufland"
                         };
 
                         productList.Add(product);
                     }
                 }
             }
+
             return productList;
         }
 

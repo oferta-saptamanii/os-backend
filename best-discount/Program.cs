@@ -15,24 +15,33 @@ namespace best_discount
 
         static async Task MainAsync()
         {
+            // Vertex AI auth
+            Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", "application_default_credentials.json");
+
+            // Firestore auth
             var credential = GoogleCredential.FromFile("data.json");
             var builder = new FirestoreClientBuilder
             {
                 Credential = credential
             };
+            
             var client = await builder.BuildAsync();
+            
             var db = await FirestoreDb.CreateAsync("oferta-saptamanii", client);
-
+            
             var scrapingService = new ScrapingService();
             var firestoreService = new FirestoreService(db);
 
             // Scrape and save catalogs
-            var catalogResults = await scrapingService.GetCatalogs();
-            await firestoreService.SaveCatalogs(catalogResults);
+            //var catalogResults = await scrapingService.GetCatalogs();
+            //await firestoreService.SaveCatalogs(catalogResults);
 
             // Scrape and save products
             var productResults = await scrapingService.GetProducts();
             await firestoreService.SaveProducts(productResults);
+
+            scrapingService.QuitSelennium();
+            Console.ReadLine();
         }
     }
 }

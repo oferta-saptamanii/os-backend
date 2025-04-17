@@ -20,6 +20,12 @@ namespace best_discount.Models
         public string Category { get; set; }
 
         [FirestoreProperty]
+        public string Subcategory { get; set; }
+
+        [FirestoreProperty]
+        public string Quantity { get; set; }
+
+        [FirestoreProperty]
         public string AvailableDate { get; set; }
 
         [FirestoreProperty]
@@ -36,5 +42,12 @@ namespace best_discount.Models
 
         [FirestoreProperty]
         public string ProductImg { get; set; }
+
+        [FirestoreProperty]
+        public string StoreName { get; set; }
+
+        [FirestoreProperty]
+        public string Location { get; set; }
+
     }
 }

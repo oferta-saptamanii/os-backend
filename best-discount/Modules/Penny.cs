@@ -83,6 +83,7 @@ namespace best_discount.Modules
             product.Category = productToken["category"]?.ToString();
             product.FullTitle = productToken["name"]?.ToString();
             product.ProductUrl = "https://www.penny.ro/products/" + productToken["slug"]?.ToString();
+            product.Quantity = productToken["amount"]?.ToString() + productToken["volumeLabelShort"]?.ToString();
 
             var images = productToken["images"];
             if (images != null && images.Any())
@@ -99,10 +100,22 @@ namespace best_discount.Modules
                     product.CurrentPrice = ConvertToCurrency(regularToken["value"]?.ToString());
                 }
 
-                product.OriginalPrice = ConvertToCurrency(priceToken["lowestPrice"]?.ToString());
+                
+
+                // most likely are bad 
                 product.DiscountPercentage = priceToken["discountPercentage"]?.ToString() ?? null;
                 if (product.DiscountPercentage != null)
+                {
+                    product.OriginalPrice = ConvertToCurrency(priceToken["lowestPrice"]?.ToString().Replace(",", "."));
                     product.DiscountPercentage += "%";
+                }
+                else
+                {
+                    product.OriginalPrice = priceToken["value"]?.ToString() ?? null;
+                    product.CurrentPrice = ConvertToCurrency(priceToken["lowestPrice"]?.ToString().Replace(",", "."));
+                }
+                    
+
 
                 string validityStart = priceToken["validityStart"]?.ToString();
                 string validityEnd = priceToken["validityEnd"]?.ToString();
@@ -118,6 +131,7 @@ namespace best_discount.Modules
                 {
                     product.AvailableDate = $"{validityStart} - {validityEnd}";
                 }
+                product.StoreName = "Penny";
             }
 
             return product;

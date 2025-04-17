@@ -1,12 +1,20 @@
 ﻿using AngleSharp;
 using best_discount.Models;
+using best_discount.Services;
 using best_discount.Utilities;
 using System.Text.RegularExpressions;
+using PdfSharpCore.Drawing;
+using PdfSharpCore.Pdf;
+using static best_discount.Utilities.Utils;
+using SixLabors.ImageSharp.Formats.Png;
+using System.Net;
 
 namespace best_discount.Modules
 {
     internal class Profi
     {
+        private readonly SeleniumService _seleniumService;
+
         static Dictionary<string, string> profiCategories = new Dictionary<string, string>()
         {
             { "Profi Super", "64" },
@@ -19,6 +27,16 @@ namespace best_discount.Modules
            // { "Profi loco2", "4" } ???????????? 2 duplicates
         };
 
+        static Dictionary<string, string> catalogsUrls = new Dictionary<string, string>()
+        {
+            { "Profi Super", "https://www.profi.ro/revista/revista-profi-super/" },
+            { "Profi City" , "https://www.profi.ro/revista/revista-profi-city/"}
+        };
+
+        public Profi(SeleniumService seleniumService)
+        {
+            _seleniumService = seleniumService;
+        }
 
         public static async Task<Dictionary<string, List<Product>>> ScrapeAsync()
         {
@@ -68,13 +86,13 @@ namespace best_discount.Modules
                     {
                         "Oferte Speciale", new List<(string action, string nonce)>
                         {
-                            ("load_coupons_by_type", "65abfa63aa")
+                            ("load_coupons_by_type", "017de734f7")
                         }
                     },
                     {
                         "Top Oferte", new List<(string action, string nonce)>
                         {
-                            ("load_offers_by_type", "43a9dd0473")
+                            ("load_offers_by_type", "849740d550")
                         }
                     }
                 };
@@ -141,9 +159,6 @@ namespace best_discount.Modules
 
             return pageData;
         }
-
-        // This stuff is cursed and shouldn't exist
-        // Someone made an API that returns a malformed html on a post request and got paid for it ??
         private static List<Product> ProcessPage(string responseContent, string category, string date)
         {
             var products = new List<Product>();
@@ -174,16 +189,20 @@ namespace best_discount.Modules
 
                 var fullNameMatch = Regex.Match(productContent, fullNamePattern, RegexOptions.Singleline);
                 if (fullNameMatch.Success)
-                    product.FullTitle = fullNameMatch.Groups[1].Value.Trim();
+                {
+                    product.FullTitle = WebUtility.HtmlDecode(fullNameMatch.Groups[1].Value.Trim());
+                    product.Quantity = GetQuantity(fullNameMatch.Groups[1].Value.Trim());
+                }
+                   
 
                 var originalPriceMatch = Regex.Match(productContent, originalPricePattern, RegexOptions.Singleline);
                 if (originalPriceMatch.Success)
-                    product.OriginalPrice = originalPriceMatch.Groups[1].Value.Trim().Replace("<sup>", ",").Replace("</sup>", "");
+                    product.OriginalPrice = originalPriceMatch.Groups[1].Value.Trim().Replace("<sup>", ",").Replace("</sup>", "").Replace(",", ".");
 
 
                 var currentPriceMatch = Regex.Match(productContent, currentPricePattern, RegexOptions.Singleline);
                 if (currentPriceMatch.Success)
-                    product.CurrentPrice = $"{currentPriceMatch.Groups[1].Value},{currentPriceMatch.Groups[2].Value}";
+                    product.CurrentPrice = $"{currentPriceMatch.Groups[1].Value}.{currentPriceMatch.Groups[2].Value}";
 
 
                 var discountMatch = Regex.Match(productContent, discountPattern, RegexOptions.Singleline);
@@ -199,6 +218,7 @@ namespace best_discount.Modules
                     string dateRangePart = date.Substring(dashIndex - 5, 12).Trim();
                     product.AvailableDate = dateRangePart.Replace("\t", "").Replace("  ", " ").Replace("-", ". - ");
                 }
+                product.StoreName = "Profi";
 
                 products.Add(product);
 
@@ -206,6 +226,72 @@ namespace best_discount.Modules
 
 
             return products;
+        }
+
+        public async Task<List<Catalog>> GetCatalog()
+        {
+            Console.WriteLine("Scraping Profi Catalogs...");
+            var url = "https://www.profi.ro/reviste-ro/";
+            //var catalogUrl = "https://revista.profi.ro/f26-city-ro/full-view.html";
+            var catalogData = new List<Catalog>();
+
+            using (HttpClient client = new HttpClient())
+            {
+                string htmlContent = await FetchContent(client, url);
+                if (string.IsNullOrEmpty(htmlContent))
+                {
+                    Utils.Report("Failed to fetch initial page content", ErrorType.ERROR);
+                    return catalogData;
+                }
+
+
+                var document = await ParseHtml(htmlContent);
+
+                var storesElement = document.QuerySelector(".magazine__content .content .content-inner .inner");
+                var valability = storesElement?.QuerySelector(".valability");
+
+                foreach (var store in catalogsUrls)
+                {
+                    
+
+                    var allCapturedUrls = await _seleniumService.CaptureNetworkRequests(store.Value);
+
+                    var cloudfrontUrls = allCapturedUrls
+                        .Where(urls => urls.Url.Contains("cloudfront") && urls.Url.Contains("collections") && urls.ResourceType == "Image")
+                        .Distinct()
+                        .ToList();
+
+
+                    var tempImagePaths = new List<string>();
+
+                    // temp imgs
+                    for (int i = 0; i < cloudfrontUrls.Count; i++)
+                    {
+                        string imageUrl = cloudfrontUrls[i].Url;
+                        string tempImagePath = $"profi-temp-image-{i + 1}.jpg";
+                        await DownloadImage(imageUrl, tempImagePath);
+                        tempImagePaths.Add(tempImagePath);
+                    }
+
+                    Console.WriteLine($"Avem: {tempImagePaths.Count} poze");
+                    string pdfFilePath = $"{DateTime.Now.ToString("mmssfff")}-profi-catalog.pdf";
+                    PdfFromImages(tempImagePaths, pdfFilePath);
+
+                    // cleanup
+                    foreach (var tempImagePath in tempImagePaths)
+                    {
+                        File.Delete(tempImagePath);
+                    }
+
+                    catalogData.Add(new Catalog
+                    {
+                        AvailableDate = valability.TextContent?.Trim(),
+                        Name = store.Key,
+                        Url = "change later"
+                    });
+                }
+            }
+            return catalogData;
         }
     }
 }
